@@ -25,6 +25,11 @@ class Customer extends Model
         return $this->hasMany(Sale::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(CustomerPayment::class);
+    }
+
     protected $casts = [
         'is_active'    => 'boolean',
         'credit_limit' => 'decimal:2',

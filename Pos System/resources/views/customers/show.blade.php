@@ -72,6 +72,64 @@
             </div>
             @endif
 
+            {{-- Payments & Ledger --}}
+            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Payments & Ledger</h4>
+                </div>
+                
+                <div class="p-6 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                    <form action="{{ route('customers.payments.store', $customer) }}" method="POST" class="flex flex-col sm:flex-row items-end gap-4">
+                        @csrf
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Amount</label>
+                            <input type="number" name="amount" step="0.01" min="0.01" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Method</label>
+                            <select name="payment_method" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option value="cash">Cash</option>
+                                <option value="card">Card</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                            <input type="text" name="notes" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Add Payment</button>
+                        </div>
+                    </form>
+                </div>
+
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
+                            <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Method</th>
+                            <th class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Notes</th>
+                            <th class="px-5 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        @forelse($payments as $payment)
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <td class="px-5 py-3 text-sm text-gray-500">{{ $payment->created_at->format('d M Y, h:i A') }}</td>
+                            <td class="px-5 py-3 text-sm text-gray-500">{{ strtoupper($payment->payment_method) }}</td>
+                            <td class="px-5 py-3 text-sm text-gray-500">{{ $payment->notes }}</td>
+                            <td class="px-5 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">-{{ number_format($payment->amount, 2) }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-500 text-sm">No payments recorded.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
             {{-- Purchase History --}}
             <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

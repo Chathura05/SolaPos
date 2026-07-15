@@ -71,7 +71,7 @@
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg p-5 text-white">
                     <p class="text-xs font-medium text-indigo-100 uppercase tracking-wide">Total Revenue</p>
-                    <p class="text-2xl font-bold mt-1">Rs. {{ number_format($overallTotal, 2) }}</p>
+                    <p class="text-2xl font-bold mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($overallTotal, 2) }}</p>
                 </div>
                 <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg p-5 text-white">
                     <p class="text-xs font-medium text-emerald-100 uppercase tracking-wide">Total Sales</p>
@@ -112,15 +112,15 @@
                             </div>
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 text-center">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Revenue</p>
-                                <p class="font-bold text-green-600 dark:text-green-400">Rs. {{ number_format($stat->total_revenue, 2) }}</p>
+                                <p class="font-bold text-green-600 dark:text-green-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->total_revenue, 2) }}</p>
                             </div>
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 text-center">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Avg Sale</p>
-                                <p class="font-bold text-blue-600 dark:text-blue-400">Rs. {{ number_format($stat->avg_sale, 2) }}</p>
+                                <p class="font-bold text-blue-600 dark:text-blue-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->avg_sale, 2) }}</p>
                             </div>
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 text-center">
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Best Sale</p>
-                                <p class="font-bold text-purple-600 dark:text-purple-400">Rs. {{ number_format($stat->max_sale, 2) }}</p>
+                                <p class="font-bold text-purple-600 dark:text-purple-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->max_sale, 2) }}</p>
                             </div>
                         </div>
 
@@ -181,10 +181,10 @@
                                     </td>
                                     <td class="px-4 py-3 font-semibold text-gray-800 dark:text-gray-200">{{ $stat->cashier_name }}</td>
                                     <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ $stat->total_sales }}</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400">Rs. {{ number_format($stat->total_revenue, 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($stat->avg_sale, 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($stat->max_sale, 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-orange-600 dark:text-orange-400">Rs. {{ number_format($stat->total_discount, 2) }}</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->total_revenue, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->avg_sale, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->max_sale, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-orange-600 dark:text-orange-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($stat->total_discount, 2) }}</td>
                                     <td class="px-4 py-3 text-right font-semibold text-indigo-600 dark:text-indigo-400">
                                         {{ $overallTotal > 0 ? round(($stat->total_revenue / $overallTotal) * 100, 1) : 0 }}%
                                     </td>
@@ -195,7 +195,7 @@
                             <tr class="font-semibold">
                                 <td colspan="2" class="px-4 py-3 text-gray-700 dark:text-gray-300">Total</td>
                                 <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ $overallCount }}</td>
-                                <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">Rs. {{ number_format($overallTotal, 2) }}</td>
+                                <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($overallTotal, 2) }}</td>
                                 <td colspan="4" class="px-4 py-3"></td>
                             </tr>
                         </tfoot>

@@ -42,6 +42,11 @@
             <span class="text-lg mr-3">🧾</span> Sales History
         </a>
 
+        <!-- Quotes -->
+        <a href="{{ route('quotes.index') }}" class="flex items-center px-4 py-2.5 rounded-lg transition-colors {{ request()->routeIs('quotes.*') ? 'bg-white/20 font-semibold shadow-inner' : 'hover:bg-white/10 text-white/90 hover:text-white' }}">
+            <span class="text-lg mr-3">📄</span> Quotations
+        </a>
+
         <!-- Dispatches -->
         <a href="{{ route('dispatches.index') }}" class="flex items-center px-4 py-2.5 rounded-lg transition-colors {{ request()->routeIs('dispatches.*') ? 'bg-white/20 font-semibold shadow-inner' : 'hover:bg-white/10 text-white/90 hover:text-white' }}">
             <span class="text-lg mr-3">📦</span> Dispatches

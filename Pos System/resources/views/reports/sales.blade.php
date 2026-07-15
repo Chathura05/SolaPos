@@ -72,7 +72,7 @@
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Revenue</p>
-                    <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">Rs. {{ number_format($totalRevenue, 2) }}</p>
+                    <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalRevenue, 2) }}</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Transactions</p>
@@ -80,15 +80,15 @@
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Order</p>
-                    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">Rs. {{ number_format($avgOrderValue, 2) }}</p>
+                    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($avgOrderValue, 2) }}</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Discounts Given</p>
-                    <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">Rs. {{ number_format($totalDiscount, 2) }}</p>
+                    <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalDiscount, 2) }}</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tax Collected</p>
-                    <p class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">Rs. {{ number_format($totalTax, 2) }}</p>
+                    <p class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalTax, 2) }}</p>
                 </div>
             </div>
 
@@ -112,7 +112,7 @@
                                     <p class="text-xs text-gray-400">{{ $pb->count }} transactions</p>
                                 </div>
                             </div>
-                            <p class="text-sm font-bold text-gray-800 dark:text-gray-200">Rs. {{ number_format($pb->total, 2) }}</p>
+                            <p class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($pb->total, 2) }}</p>
                         </div>
                     @empty
                         <p class="text-sm text-gray-400 text-center py-4">No sales data available.</p>
@@ -129,7 +129,7 @@
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-gray-600 dark:text-gray-400">{{ \Carbon\Carbon::parse($day->date)->format('D, M d') }}</span>
-                                        <span class="font-semibold text-gray-800 dark:text-gray-200">Rs. {{ number_format($day->total, 2) }} ({{ $day->count }})</span>
+                                        <span class="font-semibold text-gray-800 dark:text-gray-200">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($day->total, 2) }} ({{ $day->count }})</span>
                                     </div>
                                     <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
                                         <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2.5 rounded-full transition-all duration-500"
@@ -178,15 +178,15 @@
                                             {{ $sale->payment_method === 'other' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' : '' }}
                                         ">{{ ucfirst($sale->payment_method) }}</span>
                                     </td>
-                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($sale->subtotal, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($sale->subtotal, 2) }}</td>
                                     <td class="px-4 py-3 text-right text-orange-600 dark:text-orange-400">
                                         @if($sale->discount_amount > 0)
-                                            -Rs. {{ number_format($sale->discount_amount, 2) }}
+                                            -{{ setting('currency_symbol', 'Rs.') }} {{ number_format($sale->discount_amount, 2) }}
                                         @else
                                             —
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">Rs. {{ number_format($sale->total_amount, 2) }}</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-gray-800 dark:text-gray-200">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($sale->total_amount, 2) }}</td>
                                     <td class="px-4 py-3 text-center">
                                         <a href="{{ route('pos.receipt', $sale->id) }}"
                                            class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs" target="_blank">View</a>

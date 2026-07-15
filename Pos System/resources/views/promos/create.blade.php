@@ -24,7 +24,7 @@
                                 <x-input-label for="type" value="Discount Type" />
                                 <select id="type" name="type" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
                                     <option value="percent" {{ old('type') === 'percent' ? 'selected' : '' }}>Percentage (%)</option>
-                                    <option value="fixed" {{ old('type') === 'fixed' ? 'selected' : '' }}>Fixed Amount (Rs.)</option>
+                                    <option value="fixed" {{ old('type') === 'fixed' ? 'selected' : '' }}>Fixed Amount ({{ setting('currency_symbol', 'Rs.') }})</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('type')" class="mt-2" />
                             </div>

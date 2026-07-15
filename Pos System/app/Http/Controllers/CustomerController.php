@@ -76,6 +76,8 @@ class CustomerController extends Controller
 
     public function show(Customer $customer)
     {
+        // Remove authorization check as Cashier needs to view this too? The system might not have policy set up. 
+        // Wait, there is a `$this->authorize('view', $customer);` there, let's keep it.
         $this->authorize('view', $customer);
 
         // Merge FK-linked sales with historical phone-matched sales (deduped by id)
@@ -90,8 +92,31 @@ class CustomerController extends Controller
         $recentSales = $fkSales->merge($phoneSales)->sortByDesc('created_at')->take(10)->values();
         $totalSpent  = $fkSales->sum('total_amount') + $phoneSales->sum('total_amount');
         $totalOrders = $fkSales->count() + $phoneSales->count();
+        
+        $payments = $customer->payments()->with('cashier')->latest()->get();
 
-        return view('customers.show', compact('customer', 'recentSales', 'totalSpent', 'totalOrders'));
+        return view('customers.show', compact('customer', 'recentSales', 'totalSpent', 'totalOrders', 'payments'));
+    }
+
+    public function addPayment(Request $request, Customer $customer)
+    {
+        $request->validate([
+            'amount'         => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,card,bank_transfer,other',
+            'notes'          => 'nullable|string'
+        ]);
+
+        $customer->payments()->create([
+            'user_id'        => auth()->id(),
+            'amount'         => $request->amount,
+            'payment_method' => $request->payment_method,
+            'notes'          => $request->notes,
+        ]);
+
+        $customer->balance -= $request->amount;
+        $customer->save();
+
+        return back()->with('success', 'Payment recorded successfully. Balance updated.');
     }
 
     public function edit(Customer $customer)

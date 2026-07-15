@@ -28,7 +28,7 @@
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Stock Value (Cost)</p>
-                    <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">Rs. {{ number_format($totalStockValue, 2) }}</p>
+                    <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalStockValue, 2) }}</p>
                 </div>
             </div>
 
@@ -111,8 +111,8 @@
                                         {{ $product->total_stock }} {{ $product->unit }}
                                     </td>
                                     <td class="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{{ $product->reorder_level }}</td>
-                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($product->cost_price, 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($product->total_stock * $product->cost_price, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($product->cost_price, 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($product->total_stock * $product->cost_price, 2) }}</td>
                                     <td class="px-4 py-3 text-center">
                                         @if($isOut)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400">Out of Stock</span>

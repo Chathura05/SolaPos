@@ -33,7 +33,7 @@
         <tr>
             <td>
                 <div class="summary-title">Total Revenue</div>
-                <div class="summary-value">Rs. {{ number_format($overallTotal, 2) }}</div>
+                <div class="summary-value">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($overallTotal, 2) }}</div>
             </td>
             <td>
                 <div class="summary-title">Total Sales</div>
@@ -52,10 +52,10 @@
                 <th class="text-center">Rank</th>
                 <th>Cashier Name</th>
                 <th class="text-right">Sales Count</th>
-                <th class="text-right">Total Revenue (Rs.)</th>
-                <th class="text-right">Avg Sale (Rs.)</th>
-                <th class="text-right">Best Sale (Rs.)</th>
-                <th class="text-right">Discounts (Rs.)</th>
+                <th class="text-right">Total Revenue ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Avg Sale ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Best Sale ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Discounts ({{ setting('currency_symbol', 'Rs.') }})</th>
                 <th class="text-right">Contribution</th>
             </tr>
         </thead>

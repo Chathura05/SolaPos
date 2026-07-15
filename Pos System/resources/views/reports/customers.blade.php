@@ -72,8 +72,8 @@
                                 </div>
                                 <p class="font-bold text-lg">{{ $cust->customer_name ?: 'Unknown' }}</p>
                                 <p class="text-sm opacity-80">{{ $cust->customer_phone }}</p>
-                                <div class="mt-3 text-2xl font-bold">Rs. {{ number_format($cust->total_spent, 2) }}</div>
-                                <p class="text-sm opacity-75 mt-1">{{ $cust->total_orders }} orders · Avg Rs. {{ number_format($cust->avg_order, 2) }}</p>
+                                <div class="mt-3 text-2xl font-bold">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($cust->total_spent, 2) }}</div>
+                                <p class="text-sm opacity-75 mt-1">{{ $cust->total_orders }} orders · Avg {{ setting('currency_symbol', 'Rs.') }} {{ number_format($cust->avg_order, 2) }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -105,8 +105,8 @@
                                         <td class="px-4 py-3 font-semibold text-gray-800 dark:text-gray-200">{{ $cust->customer_name ?: 'Unknown' }}</td>
                                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $cust->customer_phone }}</td>
                                         <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ $cust->total_orders }}</td>
-                                        <td class="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400">Rs. {{ number_format($cust->total_spent, 2) }}</td>
-                                        <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Rs. {{ number_format($cust->avg_order, 2) }}</td>
+                                        <td class="px-4 py-3 text-right font-bold text-green-600 dark:text-green-400">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($cust->total_spent, 2) }}</td>
+                                        <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($cust->avg_order, 2) }}</td>
                                         <td class="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{{ \Carbon\Carbon::parse($cust->last_purchase)->diffForHumans() }}</td>
                                     </tr>
                                 @endforeach

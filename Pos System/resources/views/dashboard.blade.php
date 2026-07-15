@@ -42,7 +42,7 @@
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">My Sales Today</p>
                             <span class="text-lg">💰</span>
                         </div>
-                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">Rs. {{ number_format($todaySales, 2) }}</p>
+                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($todaySales, 2) }}</p>
                         <p class="text-xs text-gray-400 mt-1">{{ $todayCount }} transactions</p>
                     </div>
                     <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 hover:shadow-md transition">
@@ -50,7 +50,7 @@
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">My Sales This Month</p>
                             <span class="text-lg">📅</span>
                         </div>
-                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">Rs. {{ number_format($monthSales, 2) }}</p>
+                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($monthSales, 2) }}</p>
                         <p class="text-xs text-gray-400 mt-1">{{ $monthCount }} transactions</p>
                     </div>
                     <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 hover:shadow-md transition col-span-2">
@@ -105,7 +105,7 @@
                                     <p class="text-xs text-gray-400 mt-0.5">{{ $sale->created_at->format('M d, h:i A') }} · {{ $sale->customer_name ?: 'Walk-in' }}</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">Rs. {{ number_format($sale->total_amount, 2) }}</p>
+                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($sale->total_amount, 2) }}</p>
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
                                         {{ $sale->payment_method === 'cash' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
                                         {{ ucfirst($sale->payment_method) }}
@@ -129,7 +129,7 @@
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Today's Sales</p>
                             <span class="text-lg">💰</span>
                         </div>
-                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">Rs. {{ number_format($todaySales, 2) }}</p>
+                        <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($todaySales, 2) }}</p>
                         <p class="text-xs text-gray-400 mt-1">{{ $todayCount }} transactions</p>
                     </div>
                     <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 hover:shadow-md transition">
@@ -137,7 +137,7 @@
                             <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">This Month</p>
                             <span class="text-lg">📅</span>
                         </div>
-                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">Rs. {{ number_format($monthSales, 2) }}</p>
+                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($monthSales, 2) }}</p>
                         <p class="text-xs text-gray-400 mt-1">{{ $monthCount }} transactions</p>
                     </div>
                     <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-5 hover:shadow-md transition">
@@ -259,7 +259,7 @@
                                         <p class="text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400">{{ $sale->invoice_number }}</p>
                                         <p class="text-xs text-gray-400">{{ $sale->created_at->diffForHumans() }} · {{ $sale->cashier?->name }}</p>
                                     </div>
-                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">Rs. {{ number_format($sale->total_amount, 2) }}</p>
+                                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($sale->total_amount, 2) }}</p>
                                 </div>
                             @empty
                                 <p class="text-sm text-gray-400 text-center py-4">No recent sales.</p>

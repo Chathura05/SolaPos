@@ -33,7 +33,7 @@
         <tr>
             <td>
                 <div class="summary-title">Total Revenue</div>
-                <div class="summary-value">Rs. {{ number_format($totalRevenue, 2) }}</div>
+                <div class="summary-value">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalRevenue, 2) }}</div>
             </td>
             <td>
                 <div class="summary-title">Transactions</div>
@@ -41,15 +41,15 @@
             </td>
             <td>
                 <div class="summary-title">Avg Order</div>
-                <div class="summary-value">Rs. {{ number_format($avgOrderValue, 2) }}</div>
+                <div class="summary-value">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($avgOrderValue, 2) }}</div>
             </td>
             <td>
                 <div class="summary-title">Discounts</div>
-                <div class="summary-value">Rs. {{ number_format($totalDiscount, 2) }}</div>
+                <div class="summary-value">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalDiscount, 2) }}</div>
             </td>
             <td>
                 <div class="summary-title">Tax Collected</div>
-                <div class="summary-value">Rs. {{ number_format($totalTax, 2) }}</div>
+                <div class="summary-value">{{ setting('currency_symbol', 'Rs.') }} {{ number_format($totalTax, 2) }}</div>
             </td>
         </tr>
     </table>
@@ -62,9 +62,9 @@
                 <th>Cashier</th>
                 <th>Customer</th>
                 <th>Payment Method</th>
-                <th class="text-right">Subtotal (Rs.)</th>
-                <th class="text-right">Discount (Rs.)</th>
-                <th class="text-right">Total (Rs.)</th>
+                <th class="text-right">Subtotal ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Discount ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Total ({{ setting('currency_symbol', 'Rs.') }})</th>
             </tr>
         </thead>
         <tbody>

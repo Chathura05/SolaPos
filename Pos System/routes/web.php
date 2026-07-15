@@ -42,11 +42,17 @@ Route::middleware('auth')->group(function () {
     // Promos
     Route::post('/ajax/promos/validate', [PosController::class, 'validatePromo']);
 
+    // Quotes
+    Route::get('/quotes/{quote}/json', [\App\Http\Controllers\QuoteController::class, 'getJson'])->name('quotes.json');
+    Route::post('/quotes/{quote}/convert', [\App\Http\Controllers\QuoteController::class, 'convert'])->name('quotes.convert');
+    Route::resource('quotes', \App\Http\Controllers\QuoteController::class)->only(['index', 'store', 'show', 'destroy']);
+
     // Customers — Cashier can view, search, and create
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('/ajax/customers/search', [CustomerController::class, 'search'])->name('ajax.customers.search');
     Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
     Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+    Route::post('/customers/{customer}/payments', [CustomerController::class, 'addPayment'])->name('customers.payments.store');
 
     // Inventory Management (Available to Cashier & Admin)
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');

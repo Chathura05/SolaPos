@@ -208,14 +208,19 @@ class PosController extends Controller
                 $pointsEarned = (int) floor($totalAmount / $loyaltyEarningRate);
             }
 
-            // Update Customer Points
-            if ($customer) {
-                $customer->loyalty_points = $customer->loyalty_points - $pointsRedeemed + $pointsEarned;
-                $customer->save();
-            }
-
             $paidAmount   = (float) $request->paid_amount;
             $changeAmount = max(0, $paidAmount - $totalAmount);
+
+            // Update Customer Points & Balance
+            if ($customer) {
+                $customer->loyalty_points = $customer->loyalty_points - $pointsRedeemed + $pointsEarned;
+                
+                if ($paidAmount < $totalAmount) {
+                    $customer->balance += ($totalAmount - $paidAmount);
+                }
+                
+                $customer->save();
+            }
 
 
 

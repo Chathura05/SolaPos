@@ -200,7 +200,10 @@
         <button onclick="toggleFullScreen()" id="fullScreenBtn">🔲 Full Screen</button>
         <button onclick="openHeldSalesModal()">📂 Parked Sales</button>
         <a href="{{ route('pos.history') }}">📋 Sales History</a>
-        <a href="{{ route('products.index') }}">📦 Products</a>
+        <a href="{{ route('quotes.index') }}">📄 Quotes</a>
+        @if(auth()->user()->hasRole('Admin'))
+            <a href="{{ route('products.index') }}">📦 Products</a>
+        @endif
         <a href="{{ route('dashboard') }}">🏠 Dashboard</a>
         <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color:#f87171;">Logout</a>
         <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display:none;">@csrf</form>
@@ -237,7 +240,10 @@
         <div class="cart-header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3>🛒 Current Sale</h3>
-                <button onclick="holdSale()" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569;">⏸️ Hold Sale</button>
+                <div>
+                    <button onclick="saveQuote()" style="background: #e0e7ff; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #4338ca; margin-right: 5px;">📄 Save as Quote</button>
+                    <button onclick="holdSale()" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569;">⏸️ Hold Sale</button>
+                </div>
             </div>
             <div class="invoice-badge" id="invoiceLabel">Invoice will be generated on checkout</div>
         </div>
@@ -779,7 +785,7 @@ async function openHeldSalesModal() {
                 <div style="padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-weight: 600; color: #1e293b;">${sale.reference_note}</div>
-                        <div style="font-size: 0.85rem; color: #64748b;">${customerName} • Rs. ${total} • ${new Date(sale.created_at).toLocaleString()}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">${customerName} • {{ setting('currency_symbol', 'Rs.') }} ${total} • ${new Date(sale.created_at).toLocaleString()}</div>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button onclick="resumeHeldSale(${sale.id})" style="padding: 6px 12px; background: #10b981; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Resume</button>
@@ -837,6 +843,42 @@ async function deleteHeldSale(id) {
     } catch (e) {
         showToast('Error deleting parked sale', 'error');
     }
+}
+
+function saveQuote() {
+    if (cart.length === 0) {
+        showToast('Cart is empty', 'error');
+        return;
+    }
+    
+    const payload = {
+        items: cart.map(i => ({ id: i.id, qty: i.qty })),
+        discount_type: document.getElementById('discountType').value,
+        discount_value: parseFloat(document.getElementById('discountValue').value) || 0,
+        tax_percent: parseFloat(document.getElementById('taxPercent').value) || 0,
+        customer_id: document.getElementById('custId').value,
+        customer_name: document.getElementById('custName').value,
+        customer_phone: document.getElementById('custPhone').value,
+    };
+
+    fetch('/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Quote saved successfully!');
+            window.open(data.print_url, '_blank');
+            newSale();
+        } else {
+            showToast(data.message || 'Failed to save quote', 'error');
+        }
+    })
+    .catch(() => {
+        showToast('Network error. Please try again.', 'error');
+    });
 }
 
 function processCheckout() {
@@ -1051,9 +1093,50 @@ function numpadEnter() {
     document.getElementById('numpadModal').classList.remove('active');
 }
 
+async function loadQuote(id) {
+    try {
+        const res = await fetch('/quotes/' + id + '/json');
+        const quote = await res.json();
+        
+        cart = quote.items.map(i => ({
+            id: i.product_id,
+            name: i.product ? i.product.name : 'Unknown Product',
+            unit_price: parseFloat(i.unit_price),
+            qty: i.quantity,
+            subtotal: parseFloat(i.subtotal),
+            stock: i.product ? (i.product.stock_quantity || 999) : 999 
+        }));
+
+        if (quote.customer) {
+            document.getElementById('custId').value = quote.customer.id;
+            document.getElementById('custName').value = quote.customer.name;
+            if(quote.customer.phone) document.getElementById('custPhone').value = quote.customer.phone;
+            document.getElementById('availPoints').textContent = quote.customer.loyalty_points || 0;
+            document.getElementById('loyaltyBadge').style.display = 'block';
+        }
+
+        document.getElementById('discountType').value = quote.discount_type;
+        document.getElementById('discountValue').value = quote.discount_value;
+        document.getElementById('taxPercent').value = quote.tax_percent;
+        
+        renderCart();
+        
+        await fetch('/quotes/' + id + '/convert', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf } });
+        showToast('Quote loaded. Ready for checkout!');
+    } catch (e) {
+        showToast('Error loading quote', 'error');
+    }
+}
+
 // Initial render
 renderCart();
 searchProducts('');
+
+const urlParams = new URLSearchParams(window.location.search);
+const quoteId = urlParams.get('quote_id');
+if (quoteId) {
+    loadQuote(quoteId);
+}
 </script>
 </body>
 </html>

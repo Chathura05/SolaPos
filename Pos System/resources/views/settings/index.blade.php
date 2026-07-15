@@ -76,7 +76,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency Symbol</label>
                                 <input type="text" name="currency_symbol" value="{{ setting('currency_symbol', 'Rs.') }}" 
                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g. $, €, Rs.</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g. $, €, {{ setting('currency_symbol', 'Rs.') }}</p>
                             </div>
 
                             <div>
@@ -98,7 +98,7 @@
                                     <input type="number" step="0.01" name="loyalty_earning_rate" value="{{ setting('loyalty_earning_rate', 100) }}" 
                                         class="block w-full rounded-r-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g., Spend Rs. 100 to get 1 Point.</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g., Spend {{ setting('currency_symbol', 'Rs.') }} 100 to get 1 Point.</p>
                             </div>
 
                             <div>
@@ -108,7 +108,7 @@
                                     <input type="number" step="0.01" name="loyalty_redemption_value" value="{{ setting('loyalty_redemption_value', 1) }}" 
                                         class="block w-full rounded-r-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g., 1 Point = Rs. 1 discount.</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">E.g., 1 Point = {{ setting('currency_symbol', 'Rs.') }} 1 discount.</p>
                             </div>
                         </div>
 

@@ -33,8 +33,8 @@
                 <th>Category</th>
                 <th class="text-right">Stock Qty</th>
                 <th class="text-right">Reorder Level</th>
-                <th class="text-right">Unit Cost (Rs.)</th>
-                <th class="text-right">Stock Value (Rs.)</th>
+                <th class="text-right">Unit Cost ({{ setting('currency_symbol', 'Rs.') }})</th>
+                <th class="text-right">Stock Value ({{ setting('currency_symbol', 'Rs.') }})</th>
                 <th class="text-center">Status</th>
             </tr>
         </thead>
