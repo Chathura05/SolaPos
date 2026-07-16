@@ -33,14 +33,15 @@ WORKDIR /var/www/html
 # Copy existing application directory contents
 COPY . .
 
-# Create storage symlink
-RUN php artisan storage:link
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Install composer dependencies
 RUN composer install --no-dev --optimize-autoloader
+
+# Create storage symlink
+RUN php artisan storage:link
 
 # Install NPM dependencies and build Vite assets
 RUN npm install && npm run build
