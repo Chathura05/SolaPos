@@ -33,6 +33,9 @@ WORKDIR /var/www/html
 # Copy existing application directory contents
 COPY . .
 
+# Create storage symlink
+RUN php artisan storage:link
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
