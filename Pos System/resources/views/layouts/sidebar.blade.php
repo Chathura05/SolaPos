@@ -97,6 +97,7 @@
                         <a href="{{ route('categories.index') }}" class="block py-1 text-sm {{ request()->routeIs('categories.*') ? 'text-white font-semibold' : 'text-white/70 hover:text-white' }}">Categories</a>
                         <a href="{{ route('sub-categories.index') }}" class="block py-1 text-sm {{ request()->routeIs('sub-categories.*') ? 'text-white font-semibold' : 'text-white/70 hover:text-white' }}">Sub-categories</a>
                         <a href="{{ route('products.index') }}" class="block py-1 text-sm {{ request()->routeIs('products.*') ? 'text-white font-semibold' : 'text-white/70 hover:text-white' }}">Products</a>
+                        <a href="{{ route('inventory.index') }}" class="block py-1 text-sm {{ request()->routeIs('inventory.*') ? 'text-white font-semibold' : 'text-white/70 hover:text-white' }}">Inventory</a>
                     </div>
                     <div>
                         <p class="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1 mt-2">People</p>
