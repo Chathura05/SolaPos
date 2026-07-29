@@ -928,6 +928,12 @@ function processCheckout() {
             if (data.email_sent && data.email) {
                 emailBadge.textContent = '📧 E-Bill sent to ' + data.email;
                 emailBadge.style.display = 'inline-flex';
+            } else if (data.email_error) {
+                // Sale saved OK but email failed — show a warning
+                emailBadge.textContent = '⚠️ E-Bill failed: ' + data.email_error;
+                emailBadge.style.display = 'inline-flex';
+                emailBadge.style.background = '#fef3c7';
+                emailBadge.style.color = '#92400e';
             } else {
                 emailBadge.style.display = 'none';
             }

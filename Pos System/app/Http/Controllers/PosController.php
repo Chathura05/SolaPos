@@ -255,11 +255,17 @@ class PosController extends Controller
 
             DB::commit();
 
-            // Dispatch queued e-bill email if requested
+            // Dispatch e-bill email if requested
             $emailSent = false;
+            $emailError = null;
             if ($request->filled('customer_email') && $request->boolean('send_email')) {
-                Mail::to($request->customer_email)->queue(new SaleReceiptMail($sale));
-                $emailSent = true;
+                try {
+                    Mail::to($request->customer_email)->send(new SaleReceiptMail($sale));
+                    $emailSent = true;
+                } catch (\Exception $mailEx) {
+                    $emailError = $mailEx->getMessage();
+                    \Log::error('SaleReceiptMail failed for sale #' . $sale->id . ': ' . $mailEx->getMessage());
+                }
             }
 
             return response()->json([
@@ -269,6 +275,7 @@ class PosController extends Controller
                 'receipt_url' => route('pos.receipt', $sale->id),
                 'email_sent'  => $emailSent,
                 'email'       => $emailSent ? $request->customer_email : null,
+                'email_error' => $emailError,
             ]);
 
         } catch (\Exception $e) {
