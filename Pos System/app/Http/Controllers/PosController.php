@@ -10,6 +10,8 @@ use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use App\Traits\StockTrait;
 
 class PosController extends Controller
@@ -78,6 +80,12 @@ class PosController extends Controller
             'points_redeemed'=> 'nullable|integer|min:0',
             'promo_code'     => 'nullable|string|max:255',
         ]);
+
+        if ($request->discount_type === 'percent' && (float) $request->discount_value > 100) {
+            throw ValidationException::withMessages([
+                'discount_value' => 'A percentage discount cannot exceed 100%.',
+            ]);
+        }
 
         $showroomId = auth()->user()->showroom_id;
         if (!$showroomId) {
@@ -169,6 +177,8 @@ class PosController extends Controller
                 ? round($subtotal * $discountValue / 100, 2)
                 : $discountValue;
 
+            $discountAmount = min($subtotal, max(0, $discountAmount));
+
             $afterDiscount = $subtotal - $discountAmount;
 
             // Calculate tax
@@ -186,6 +196,12 @@ class PosController extends Controller
             } elseif ($request->customer_phone) {
                 $customer = \App\Models\Customer::where('phone', $request->customer_phone)->first();
                 $customerId = $customer?->id;
+            }
+
+            if ($customer && $customer->showroom_id && $customer->showroom_id !== $showroomId) {
+                throw ValidationException::withMessages([
+                    'customer_id' => 'The selected customer does not belong to this showroom.',
+                ]);
             }
 
             if ($pointsRedeemed > 0) {
@@ -210,6 +226,12 @@ class PosController extends Controller
 
             $paidAmount   = (float) $request->paid_amount;
             $changeAmount = max(0, $paidAmount - $totalAmount);
+
+            if ($paidAmount < $totalAmount && !$customer) {
+                throw ValidationException::withMessages([
+                    'paid_amount' => 'A customer is required when recording an outstanding balance.',
+                ]);
+            }
 
             // Update Customer Points & Balance
             if ($customer) {
@@ -278,15 +300,20 @@ class PosController extends Controller
                 'email_error' => $emailError,
             ]);
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('POS checkout failed', ['exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Checkout failed. Please try again.'], 500);
         }
     }
 
     /** Show printable receipt */
     public function receipt(Sale $sale)
     {
+        $this->authorize('view', $sale);
         $sale->load('items', 'cashier');
         return view('pos.receipt', compact('sale'));
     }
@@ -343,6 +370,7 @@ class PosController extends Controller
     /** Send (or re-send) the e-bill receipt email for a given sale */
     public function sendReceipt(Request $request, Sale $sale)
     {
+        $this->authorize('view', $sale);
         $request->validate([
             'email' => 'required|email|max:255',
         ]);
@@ -401,7 +429,8 @@ class PosController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Refund failed: ' . $e->getMessage());
+            Log::error('Full refund failed', ['sale_id' => $sale->id, 'exception' => $e]);
+            return back()->with('error', 'Refund failed. Please try again.');
         }
     }
 
@@ -493,7 +522,8 @@ class PosController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Partial refund failed', ['sale_id' => $sale->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Refund failed. Please try again.'], 500);
         }
     }
 
@@ -556,7 +586,8 @@ class PosController extends Controller
             return response()->json(['success' => true, 'message' => 'Sale parked successfully.']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Holding sale failed', ['exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Unable to hold the sale. Please try again.'], 500);
         }
     }
 

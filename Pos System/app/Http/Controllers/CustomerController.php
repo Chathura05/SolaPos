@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -100,21 +102,33 @@ class CustomerController extends Controller
 
     public function addPayment(Request $request, Customer $customer)
     {
+        $this->authorize('view', $customer);
+
         $request->validate([
-            'amount'         => 'required|numeric|min:0.01',
+            'amount'         => ['required', 'numeric', 'min:0.01', 'max:' . max(0, $customer->balance)],
             'payment_method' => 'required|in:cash,card,bank_transfer,other',
             'notes'          => 'nullable|string'
         ]);
 
-        $customer->payments()->create([
-            'user_id'        => auth()->id(),
-            'amount'         => $request->amount,
-            'payment_method' => $request->payment_method,
-            'notes'          => $request->notes,
-        ]);
+        DB::transaction(function () use ($request, $customer) {
+            $lockedCustomer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
+            $amount = (float) $request->amount;
 
-        $customer->balance -= $request->amount;
-        $customer->save();
+            if ($amount > (float) $lockedCustomer->balance) {
+                throw ValidationException::withMessages([
+                    'amount' => 'The payment cannot exceed the outstanding balance.',
+                ]);
+            }
+
+            $lockedCustomer->payments()->create([
+                'user_id'        => auth()->id(),
+                'amount'         => $amount,
+                'payment_method' => $request->payment_method,
+                'notes'          => $request->notes,
+            ]);
+
+            $lockedCustomer->decrement('balance', $amount);
+        });
 
         return back()->with('success', 'Payment recorded successfully. Balance updated.');
     }

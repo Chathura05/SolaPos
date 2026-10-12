@@ -49,13 +49,16 @@ class DispatchController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if ($dispatch->status !== 'pending') {
-            return back()->with('error', 'This dispatch is no longer pending.');
-        }
-
         DB::beginTransaction();
 
         try {
+            $dispatch = ShowroomDispatch::query()->lockForUpdate()->findOrFail($dispatch->id);
+
+            if ($dispatch->status !== 'pending') {
+                DB::rollBack();
+                return back()->with('error', 'This dispatch is no longer pending.');
+            }
+
             $dispatch->load('items.product');
 
             foreach ($dispatch->items as $item) {
@@ -63,6 +66,7 @@ class DispatchController extends Controller
                 $currentStock = DB::table('showroom_product')
                     ->where('showroom_id', $dispatch->showroom_id)
                     ->where('product_id', $item->product_id)
+                    ->lockForUpdate()
                     ->value('stock_quantity') ?? 0;
 
                 // Upsert stock
@@ -93,7 +97,8 @@ class DispatchController extends Controller
             return redirect()->route('dispatches.index')->with('success', "Dispatch {$dispatch->reference_number} accepted successfully. Stock updated.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error accepting dispatch: ' . $e->getMessage());
+            \Log::error('Dispatch acceptance failed', ['dispatch_id' => $dispatch->id, 'exception' => $e]);
+            return back()->with('error', 'Unable to accept the dispatch. Please try again.');
         }
     }
 }
