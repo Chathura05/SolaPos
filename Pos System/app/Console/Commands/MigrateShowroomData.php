@@ -35,7 +35,12 @@ class MigrateShowroomData extends Command
         $this->info("Main Showroom ensured. ID: {$showroom->id}");
 
         // 2. Assign all existing users to the main showroom (if not already assigned)
-        \App\Models\User::whereNull('showroom_id')->update(['showroom_id' => $showroom->id]);
+        // This command also runs before the users soft-delete column exists.
+        $users = \Illuminate\Support\Facades\DB::table('users')->whereNull('showroom_id');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'deleted_at')) {
+            $users->whereNull('deleted_at');
+        }
+        $users->update(['showroom_id' => $showroom->id]);
         $this->info('Users assigned to main showroom.');
 
         // 3. Assign all existing sales to the main showroom

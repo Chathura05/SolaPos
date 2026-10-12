@@ -38,22 +38,18 @@ class StockTransferController extends Controller
         $destId   = $request->dest_showroom_id;
         $qty      = $request->quantity;
 
-        // Check source stock
-        $sourcePivot = DB::table('showroom_product')
-            ->where('showroom_id', $sourceId)
-            ->where('product_id', $product->id)
-            ->first();
-
-        $sourceStock = $sourcePivot ? $sourcePivot->stock_quantity : 0;
-
-        if ($sourceStock < $qty) {
-            return back()->withInput()
-                ->with('error', "Insufficient stock in source showroom. Available: {$sourceStock} {$product->unit}");
-        }
-
         DB::beginTransaction();
 
         try {
+            $pivots = DB::table('showroom_product')
+                ->where('product_id', $product->id)
+                ->whereIn('showroom_id', [$sourceId, $destId])
+                ->orderBy('showroom_id')->lockForUpdate()->get()->keyBy('showroom_id');
+            $sourceStock = $pivots->get($sourceId)?->stock_quantity ?? 0;
+            if ($sourceStock < $qty) {
+                DB::rollBack();
+                return back()->withInput()->with('error', "Insufficient stock in source showroom. Available: {$sourceStock} {$product->unit}");
+            }
             $sourceShowroom = Showroom::findOrFail($sourceId);
             $destShowroom   = Showroom::findOrFail($destId);
             $reference      = "Transfer: {$sourceShowroom->name} → {$destShowroom->name}";
@@ -64,12 +60,7 @@ class StockTransferController extends Controller
                 $sourceId, $product->id, $sourceStock - $qty
             );
 
-            // Read dest before-quantity, then add
-            $destPivot  = DB::table('showroom_product')
-                ->where('showroom_id', $destId)
-                ->where('product_id', $product->id)
-                ->first();
-            $destBefore = $destPivot ? $destPivot->stock_quantity : 0;
+            $destBefore = $pivots->get($destId)?->stock_quantity ?? 0;
 
             $this->upsertShowroomStock($destId, $product->id, $destBefore + $qty);
 

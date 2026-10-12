@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Mail\SaleReceiptMail;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Traits\StockTrait;
+use App\Services\SaleRefundService;
 
 class PosController extends Controller
 {
@@ -65,7 +65,7 @@ class PosController extends Controller
     {
         $request->validate([
             'items'          => 'required|array|min:1',
-            'items.*.id'     => 'required|exists:products,id',
+            'items.*.id'     => 'required|integer|distinct|exists:products,id',
             'items.*.qty'    => 'required|integer|min:1',
             'discount_type'  => 'required|in:fixed,percent',
             'discount_value' => 'required|numeric|min:0',
@@ -100,7 +100,7 @@ class PosController extends Controller
 
             // Pre-fetch all products and stock pivots to prevent N+1 queries
             $itemIds  = collect($request->items)->pluck('id')->toArray();
-            $products = Product::whereIn('id', $itemIds)->get()->keyBy('id');
+            $products = Product::whereIn('id', $itemIds)->where('is_active', true)->get()->keyBy('id');
             $pivots   = DB::table('showroom_product')
                 ->where('showroom_id', $showroomId)
                 ->whereIn('product_id', $itemIds)
@@ -125,7 +125,7 @@ class PosController extends Controller
                     ], 422);
                 }
 
-                $itemSubtotal = $product->selling_price * $item['qty'];
+                $itemSubtotal = round($product->selling_price * $item['qty'], 2);
                 $subtotal    += $itemSubtotal;
 
                 $saleItemsData[] = [
@@ -158,7 +158,7 @@ class PosController extends Controller
             // Check Promo Code
             $promoCodeStr = $request->promo_code;
             if ($promoCodeStr) {
-                $promo = \App\Models\PromoCode::where('code', strtoupper($promoCodeStr))->first();
+                $promo = \App\Models\PromoCode::where('code', strtoupper($promoCodeStr))->lockForUpdate()->first();
                 if ($promo && $promo->isValid($subtotal)) {
                     $promo->increment('uses_count');
                     $discountType = $promo->type;
@@ -177,24 +177,21 @@ class PosController extends Controller
                 ? round($subtotal * $discountValue / 100, 2)
                 : $discountValue;
 
-            $discountAmount = min($subtotal, max(0, $discountAmount));
+            $discountAmount = round(min($subtotal, max(0, $discountAmount)), 2);
 
             $afterDiscount = $subtotal - $discountAmount;
 
-            // Calculate tax
-            $taxPercent = (float) $request->tax_percent;
-            $taxAmount  = round($afterDiscount * $taxPercent / 100, 2);
-
-            $totalAmount  = $afterDiscount + $taxAmount;
-            
             // Handle Customer & Loyalty Points Redemption
             $pointsRedeemed = (int) $request->points_redeemed;
             $customerId = $request->customer_id;
             $customer = null;
             if ($customerId) {
-                $customer = \App\Models\Customer::find($customerId);
+                $customer = \App\Models\Customer::lockForUpdate()->find($customerId);
+                if (!$customer) {
+                    throw ValidationException::withMessages(['customer_id' => 'The selected customer is unavailable.']);
+                }
             } elseif ($request->customer_phone) {
-                $customer = \App\Models\Customer::where('phone', $request->customer_phone)->first();
+                $customer = \App\Models\Customer::where('phone', $request->customer_phone)->lockForUpdate()->first();
                 $customerId = $customer?->id;
             }
 
@@ -206,16 +203,21 @@ class PosController extends Controller
 
             if ($pointsRedeemed > 0) {
                 if (!$customer || $customer->loyalty_points < $pointsRedeemed) {
-                    throw new \Exception("Insufficient loyalty points available.");
+                    throw ValidationException::withMessages(['points_redeemed' => 'Insufficient loyalty points available.']);
                 }
                 $redemptionValue = (float) setting('loyalty_redemption_value', 1);
-                $pointsDiscount = $pointsRedeemed * $redemptionValue;
-                
-                // Deduct points discount from total amount (but don't go below 0)
-                $totalAmount = max(0, $totalAmount - $pointsDiscount);
-                // We add the points discount to the overall discount_amount for accounting
+                $pointsDiscount = round($pointsRedeemed * $redemptionValue, 2);
+                if ($redemptionValue <= 0 || $pointsDiscount > $afterDiscount) {
+                    throw ValidationException::withMessages(['points_redeemed' => 'Redeemed points cannot exceed the remaining purchase amount.']);
+                }
+                $afterDiscount -= $pointsDiscount;
                 $discountAmount += $pointsDiscount;
             }
+
+            // Match the terminal: all discounts, including loyalty, reduce the taxable amount.
+            $taxPercent = (float) $request->tax_percent;
+            $taxAmount = round($afterDiscount * $taxPercent / 100, 2);
+            $totalAmount = round($afterDiscount + $taxAmount, 2);
 
             // Calculate Points Earned based on Final Total
             $loyaltyEarningRate = (float) setting('loyalty_earning_rate', 100);
@@ -224,7 +226,7 @@ class PosController extends Controller
                 $pointsEarned = (int) floor($totalAmount / $loyaltyEarningRate);
             }
 
-            $paidAmount   = (float) $request->paid_amount;
+            $paidAmount   = round((float) $request->paid_amount, 2);
             $changeAmount = max(0, $paidAmount - $totalAmount);
 
             if ($paidAmount < $totalAmount && !$customer) {
@@ -383,148 +385,53 @@ class PosController extends Controller
         ]);
     }
 
-    /** Process a full refund for a completed sale (Admin only) */
-    public function refund(Sale $sale)
+    /** Return all items that have not already been refunded. */
+    public function refund(Sale $sale, SaleRefundService $refunds)
     {
-        if ($sale->status !== 'completed') {
-            return back()->with('error', 'This sale has already been refunded.');
-        }
-
-        DB::beginTransaction();
-
         try {
-            $sale->load('items');
-
-            foreach ($sale->items as $item) {
-                $showroomId = $sale->showroom_id;
-                $newStock   = DB::table('showroom_product')
-                    ->where('showroom_id', $showroomId)
-                    ->where('product_id', $item->product_id)
-                    ->value('stock_quantity') ?? 0;
-
-                ['before' => $before, 'after' => $after] = $this->upsertShowroomStock(
-                    $showroomId, $item->product_id, $newStock + $item->quantity
-                );
-
-                // Log return stock movement
-                StockMovement::create([
-                    'product_id'      => $item->product_id,
-                    'user_id'         => auth()->id(),
-                    'showroom_id'     => $showroomId,
-                    'type'            => 'return',
-                    'quantity'        => $item->quantity,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $after,
-                    'reference'       => "Refund - {$sale->invoice_number}",
-                    'notes'           => "Refunded sale {$sale->invoice_number}",
-                ]);
-            }
-
-            // Mark sale as refunded
-            $sale->update(['status' => 'refunded']);
-
-            DB::commit();
-
-            return back()->with('success', "Sale {$sale->invoice_number} has been refunded. Stock has been restored.");
-
+            $result = $refunds->refund($sale);
+            return back()->with('success', $this->refundMessage($result) . ' Stock has been restored.');
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Full refund failed', ['sale_id' => $sale->id, 'exception' => $e]);
             return back()->with('error', 'Refund failed. Please try again.');
         }
     }
 
-    /** Process a partial refund for a sale */
-    public function partialRefund(Request $request, Sale $sale)
+    public function partialRefund(Request $request, Sale $sale, SaleRefundService $refunds)
     {
         $request->validate([
-            'items'       => 'required|array|min:1',
-            'items.*.id'  => 'required|exists:sale_items,id',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|integer|distinct|exists:sale_items,id',
             'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        if (!in_array($sale->status, ['completed', 'partially_refunded'])) {
-            return response()->json(['success' => false, 'message' => 'Invalid sale status for refund.'], 400);
-        }
-
-        DB::beginTransaction();
-
         try {
-            $sale->load('items');
-            $refundAmount = 0;
-            $showroomId   = $sale->showroom_id;
-
-            foreach ($request->items as $reqItem) {
-                $saleItem = $sale->items->firstWhere('id', $reqItem['id']);
-                if (!$saleItem) {
-                    throw new \Exception("Item ID {$reqItem['id']} does not belong to this sale.");
-                }
-
-                $availableToRefund = $saleItem->quantity - $saleItem->refunded_quantity;
-                if ($reqItem['qty'] > $availableToRefund) {
-                    throw new \Exception("Cannot refund {$reqItem['qty']} of {$saleItem->product_name}. Only {$availableToRefund} available to refund.");
-                }
-
-                $refundQty        = $reqItem['qty'];
-                $itemRefundAmount  = $refundQty * $saleItem->unit_price;
-                $refundAmount     += $itemRefundAmount;
-
-                // Update sale item refunded_quantity (now in $fillable so this works)
-                $saleItem->update([
-                    'refunded_quantity' => $saleItem->refunded_quantity + $refundQty
-                ]);
-
-                // Restore stock using shared helper
-                $currentStock = DB::table('showroom_product')
-                    ->where('showroom_id', $showroomId)
-                    ->where('product_id', $saleItem->product_id)
-                    ->value('stock_quantity') ?? 0;
-
-                ['before' => $before, 'after' => $after] = $this->upsertShowroomStock(
-                    $showroomId, $saleItem->product_id, $currentStock + $refundQty
-                );
-
-                // Log return stock movement
-                StockMovement::create([
-                    'product_id'      => $saleItem->product_id,
-                    'user_id'         => auth()->id(),
-                    'showroom_id'     => $showroomId,
-                    'type'            => 'return',
-                    'quantity'        => $refundQty,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $after,
-                    'reference'       => "Partial Refund - {$sale->invoice_number}",
-                    'notes'           => "Refunded {$refundQty}x {$saleItem->product_name}",
-                ]);
-            }
-
-            // Update sale refunded_amount (now in $fillable so this works)
-            $sale->update([
-                'refunded_amount' => $sale->refunded_amount + $refundAmount,
-                'status'          => 'partially_refunded'
-            ]);
-
-            // Check if fully refunded
-            $totalOriginalItems = $sale->items->sum('quantity');
-            $totalRefundedItems = $sale->fresh()->items->sum('refunded_quantity');
-
-            if ($totalRefundedItems >= $totalOriginalItems) {
-                $sale->update(['status' => 'refunded']);
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'success'         => true,
-                'message'         => 'Successfully refunded ' . setting('currency_symbol', 'Rs.') . ' ' . number_format($refundAmount, 2),
-                'refunded_amount' => $refundAmount
-            ]);
-
+            $result = $refunds->refund($sale, $request->items);
+            return response()->json(array_merge($result, [
+                'success' => true,
+                'message' => $this->refundMessage($result),
+            ]));
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Partial refund failed', ['sale_id' => $sale->id, 'exception' => $e]);
             return response()->json(['success' => false, 'message' => 'Refund failed. Please try again.'], 500);
         }
+    }
+
+    private function refundMessage(array $result): string
+    {
+        $currency = setting('currency_symbol', 'Rs.');
+        if ($result['balance_cancelled'] > 0) {
+            return 'Refund value ' . $currency . ' ' . number_format($result['refunded_amount'], 2)
+                . ': return ' . $currency . ' ' . number_format($result['cash_refund'], 2)
+                . ' to the customer; ' . $currency . ' ' . number_format($result['balance_cancelled'], 2)
+                . ' outstanding balance cancelled.';
+        }
+
+        return 'Successfully refunded ' . $currency . ' ' . number_format($result['refunded_amount'], 2);
     }
 
     /** Park/Hold a sale */

@@ -515,6 +515,12 @@ function showStartHint() {
     document.getElementById('startHint').style.display = 'none';
 }
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
 function searchProducts(q, addFirst = false) {
     fetch(`/ajax/products/search?q=${encodeURIComponent(q)}`)
         .then(r => r.json())
@@ -528,19 +534,22 @@ function searchProducts(q, addFirst = false) {
 
             if (addFirst) { addToCart(products[0]); document.getElementById('searchInput').value = ''; searchProducts(''); return; }
 
-            grid.innerHTML = products.map(p => {
+            grid.innerHTML = products.map((p, index) => {
                 let imgHtml = p.image 
-                    ? `<div class="icon" style="background-image: url('/storage/${p.image}'); background-size: cover; background-position: center; width: 48px; height: 48px; border-radius: 8px;"></div>`
+                    ? `<div class="icon" style="background-image: url('/storage/${String(p.image).split('/').map(part => encodeURIComponent(part).replace(/'/g, '%27')).join('/')}'); background-size: cover; background-position: center; width: 48px; height: 48px; border-radius: 8px;"></div>`
                     : `<div class="icon">📦</div>`;
                 return `
-                <div class="product-card ${p.stock_quantity <= 0 ? 'out-of-stock' : ''}" onclick="addToCart(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+                <div class="product-card ${p.stock_quantity <= 0 ? 'out-of-stock' : ''}" data-product-index="${index}">
                     ${imgHtml}
-                    <div class="pname">${p.name}</div>
-                    <div class="psku">${p.barcode ? p.barcode : ''}</div>
+                    <div class="pname">${escapeHtml(p.name)}</div>
+                    <div class="psku">${escapeHtml(p.barcode)}</div>
                     <div class="pprice">${parseFloat(p.selling_price).toFixed(2)}</div>
-                    <div class="pstock ${p.stock_quantity <= 10 ? 'low' : ''}">Stock: ${p.stock_quantity} ${p.unit}</div>
+                    <div class="pstock ${p.stock_quantity <= 10 ? 'low' : ''}">Stock: ${p.stock_quantity} ${escapeHtml(p.unit)}</div>
                 </div>
             `}).join('');
+            grid.querySelectorAll('[data-product-index]').forEach(card => {
+                card.addEventListener('click', () => addToCart(products[Number(card.dataset.productIndex)]));
+            });
         });
 }
 
@@ -583,7 +592,7 @@ function renderCart() {
     const html = cart.map((item, idx) => `
         <div class="cart-item">
             <div class="item-info">
-                <div class="item-name">${item.name}</div>
+                <div class="item-name">${escapeHtml(item.name)}</div>
                 <div class="item-price">${item.unit_price.toFixed(2)} × ${item.qty}</div>
             </div>
             <div class="qty-ctrl">
@@ -636,22 +645,18 @@ function recalc() {
     const discType = document.getElementById('discountType').value;
     const discVal  = parseFloat(document.getElementById('discountValue').value) || 0;
     const taxPct   = parseFloat(document.getElementById('taxPercent').value) || 0;
-    const ptsRedeemed = parseInt(document.getElementById('pointsRedeemed').value) || 0;
-    const availPts = parseInt(document.getElementById('availPoints').textContent) || 0;
-
-    if (ptsRedeemed > availPts) {
-        document.getElementById('pointsRedeemed').value = availPts;
-    }
-
-    const finalPts = parseInt(document.getElementById('pointsRedeemed').value) || 0;
-    const ptsValue = finalPts * {{ setting('loyalty_redemption_value', 1) }};
-
-    const discAmt  = discType === 'percent' ? subtotal * discVal / 100 : discVal;
-    let afterDisc= subtotal - discAmt - ptsValue;
-    if (afterDisc < 0) afterDisc = 0;
-    
-    const taxAmt   = afterDisc * taxPct / 100;
-    const total    = afterDisc + taxAmt;
+    const ptsRedeemed = Math.max(0, parseInt(document.getElementById('pointsRedeemed').value) || 0);
+    const availPts = Math.max(0, parseInt(document.getElementById('availPoints').textContent) || 0);
+    const redemptionValue = {{ (float) setting('loyalty_redemption_value', 1) }};
+    const roundMoney = value => Math.round((value + Number.EPSILON) * 100) / 100;
+    const discAmt = roundMoney(Math.min(subtotal, Math.max(0, discType === 'percent' ? subtotal * discVal / 100 : discVal)));
+    const maxPoints = redemptionValue > 0 ? Math.floor((subtotal - discAmt + 0.000001) / redemptionValue) : 0;
+    const finalPts = Math.min(ptsRedeemed, availPts, maxPoints);
+    document.getElementById('pointsRedeemed').value = finalPts;
+    const ptsValue = roundMoney(finalPts * redemptionValue);
+    const afterDisc = Math.max(0, roundMoney(subtotal - discAmt - ptsValue));
+    const taxAmt = roundMoney(afterDisc * taxPct / 100);
+    const total = roundMoney(afterDisc + taxAmt);
 
     document.getElementById('subtotalDisp').textContent = subtotal.toFixed(2);
     document.getElementById('discountDisp').textContent = '- ' + (discAmt + ptsValue).toFixed(2);
@@ -784,8 +789,8 @@ async function openHeldSalesModal() {
             html += `
                 <div style="padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-weight: 600; color: #1e293b;">${sale.reference_note}</div>
-                        <div style="font-size: 0.85rem; color: #64748b;">${customerName} • {{ setting('currency_symbol', 'Rs.') }} ${total} • ${new Date(sale.created_at).toLocaleString()}</div>
+                        <div style="font-weight: 600; color: #1e293b;">${escapeHtml(sale.reference_note)}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">${escapeHtml(customerName)} • {{ setting('currency_symbol', 'Rs.') }} ${total} • ${new Date(sale.created_at).toLocaleString()}</div>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button onclick="resumeHeldSale(${sale.id})" style="padding: 6px 12px; background: #10b981; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">Resume</button>

@@ -8,6 +8,7 @@ use App\Models\StockMovement;
 use App\Traits\StockTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ShowroomReturnController extends Controller
 {
@@ -19,7 +20,7 @@ class ShowroomReturnController extends Controller
         $query = ShowroomReturn::with(['showroom', 'items.product'])->latest();
 
         // If Cashier, only show their own showroom returns
-        if ($user->hasRole('Cashier') && $user->showroom_id) {
+        if (!$user->hasRole('Admin')) {
             $query->where('showroom_id', $user->showroom_id);
         }
 
@@ -51,7 +52,7 @@ class ShowroomReturnController extends Controller
         $request->validate([
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|integer|distinct|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.reason' => 'nullable|string',
         ]);
@@ -79,6 +80,9 @@ class ShowroomReturnController extends Controller
     public function show($id)
     {
         $return = ShowroomReturn::with(['showroom', 'items.product', 'admin'])->findOrFail($id);
+        if (!auth()->user()->hasRole('Admin') && auth()->user()->showroom_id !== $return->showroom_id) {
+            abort(403);
+        }
         return view('returns.show', compact('return'));
     }
 
@@ -88,45 +92,44 @@ class ShowroomReturnController extends Controller
             abort(403);
         }
 
-        $return = ShowroomReturn::with('items')->findOrFail($id);
+        DB::transaction(function () use ($id, $request) {
+            $return = ShowroomReturn::lockForUpdate()->findOrFail($id);
+            if ($return->status !== 'pending') {
+                throw ValidationException::withMessages(['return' => 'Only pending returns can be accepted.']);
+            }
 
-        if ($return->status !== 'pending') {
-            return redirect()->back()->with('error', 'Only pending returns can be accepted.');
-        }
+            // Group existing requests too, since older requests may contain duplicate products.
+            $items = $return->items()->orderBy('product_id')->get()->groupBy('product_id');
+            foreach ($items as $productId => $productItems) {
+                $quantity = (int) $productItems->sum('quantity');
+                $currentStock = DB::table('showroom_product')
+                    ->where('showroom_id', $return->showroom_id)
+                    ->where('product_id', $productId)
+                    ->lockForUpdate()->value('stock_quantity') ?? 0;
+                if ($currentStock < $quantity) {
+                    throw ValidationException::withMessages(['items' => 'Insufficient stock to accept this return.']);
+                }
 
-        DB::transaction(function () use ($return, $request) {
+                $stock = $this->upsertShowroomStock($return->showroom_id, $productId, $currentStock - $quantity);
+                StockMovement::create([
+                    'product_id' => $productId,
+                    'user_id' => auth()->id(),
+                    'showroom_id' => $return->showroom_id,
+                    'type' => 'return',
+                    'quantity' => -$quantity,
+                    'before_quantity' => $stock['before'],
+                    'after_quantity' => $stock['after'],
+                    'reference' => $return->reference_number,
+                    'notes' => $productItems->pluck('reason')->filter()->implode('; '),
+                ]);
+            }
+
             $return->update([
                 'status' => 'accepted',
                 'admin_id' => auth()->id(),
                 'notes' => $request->notes ? $return->notes . "\nAdmin Note: " . $request->notes : $return->notes,
             ]);
-
-            foreach ($return->items as $item) {
-                $currentStock = DB::table('showroom_product')
-                    ->where('showroom_id', $return->showroom_id)
-                    ->where('product_id', $item->product_id)
-                    ->value('stock_quantity') ?? 0;
-
-                // Decrease stock
-                ['before' => $before, 'after' => $after] = $this->upsertShowroomStock(
-                    $return->showroom_id,
-                    $item->product_id,
-                    max(0, $currentStock - $item->quantity)
-                );
-
-                StockMovement::create([
-                    'product_id'      => $item->product_id,
-                    'user_id'         => auth()->id(),
-                    'showroom_id'     => $return->showroom_id,
-                    'type'            => 'return',
-                    'quantity'        => -$item->quantity,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $after,
-                    'reference'       => $return->reference_number,
-                    'notes'           => $item->reason,
-                ]);
-            }
-        });
+        }, 3);
 
         return redirect()->route('returns.index')->with('success', 'Return accepted and stock updated.');
     }
@@ -137,17 +140,13 @@ class ShowroomReturnController extends Controller
             abort(403);
         }
 
-        $return = ShowroomReturn::findOrFail($id);
-
-        if ($return->status !== 'pending') {
-            return redirect()->back()->with('error', 'Only pending returns can be rejected.');
-        }
-
-        $return->update([
-            'status' => 'rejected',
-            'admin_id' => auth()->id(),
-            'notes' => $request->notes ? $return->notes . "\nAdmin Note: " . $request->notes : $return->notes,
-        ]);
+        DB::transaction(function () use ($request, $id) {
+            $return = ShowroomReturn::lockForUpdate()->findOrFail($id);
+            if ($return->status !== 'pending') {
+                throw ValidationException::withMessages(['return' => 'Only pending returns can be rejected.']);
+            }
+            $return->update(['status' => 'rejected', 'admin_id' => auth()->id(), 'notes' => $request->notes ?? $return->notes]);
+        });
 
         return redirect()->route('returns.index')->with('success', 'Return request rejected.');
     }

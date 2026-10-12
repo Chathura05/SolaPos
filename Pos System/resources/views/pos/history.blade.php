@@ -126,14 +126,15 @@
                                     🖨 Receipt
                                 </a>
                                 <button type="button"
-                                        onclick="openEmailModal({{ $sale->id }}, '{{ addslashes($sale->invoice_number) }}', '{{ addslashes($sale->customer_name ?? '') }}')"
+                                        data-sale-id="{{ $sale->id }}" data-invoice="{{ $sale->invoice_number }}" data-customer="{{ $sale->customer_name ?? '' }}"
+                                        onclick="openEmailModal(Number(this.dataset.saleId), this.dataset.invoice, this.dataset.customer)"
                                         class="inline-flex items-center px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-medium rounded-lg transition">
                                     📧 E-Bill
                                 </button>
                                 @role('Admin')
                                 @if(in_array($sale->status, ['completed', 'partially_refunded']))
                                 <script id="sale-items-{{ $sale->id }}" type="application/json">
-                                    {!! $sale->items->toJson() !!}
+                                    @json($sale->items)
                                 </script>
                                 <button type="button"
                                         data-sale-id="{{ $sale->id }}"
@@ -322,6 +323,12 @@
     // --- Refund Logic ---
     let currentRefundSaleId = null;
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
     function openRefundModal(btn) {
         const saleId = btn.getAttribute('data-sale-id');
         const invoiceNumber = btn.getAttribute('data-invoice');
@@ -346,7 +353,7 @@
             const tr = document.createElement('tr');
             
             tr.innerHTML = `
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">${item.product_name}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">${escapeHtml(item.product_name)}</td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">${Number(item.unit_price).toFixed(2)}</td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">${item.quantity}</td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">${item.refunded_quantity || 0}</td>
